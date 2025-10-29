@@ -1,7 +1,11 @@
+import matplotlib.pyplot as plt
+
 from image_handling.imagesHandling import *
 from model.autoencoder_model import *
 from model.ae_loss_function import *
 from model.ae_metric_fucntion import *
+
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
 
 # import os
@@ -115,7 +119,9 @@ def main():
     # number_filters = (125, 75, 100, 50, 150)
     # number_filters = (150, 75, 100, 75, 150)
     # number_filters = (75, 50, 75)
-    number_filters = (32, 8)
+    # number_filters = (32, 8)
+    # number_filters = (512, 32)
+    number_filters = (8192, 50)
 
     # filter size vector
     # filters_size_vector = [(3, 3), (5, 5), (3, 3), (5, 5), (3, 3)]
@@ -184,11 +190,11 @@ def main():
                              'categorical_crossentropy',  # 1
                              'sparse_categorical_crossentropy']  # 2
     
-    learn_rate = 0.0001
-    # learn_rate = 0.00001
+    learn_rate = [0.001, 0.0001, 0.00001, 0.000001]
+    idx_lr = 0
 
     # optimizer
-    opt_setup = keras.optimizers.Adam(learning_rate=learn_rate)  # Adam
+    opt_setup = keras.optimizers.Adam(learning_rate=learn_rate[idx_lr])  # Adam
     # opt_setup = keras.optimizers.RMSprop(learning_rate=0.001) # RMSprop
     # opt_setup = keras.optimizers.SGD(learning_rate=0.001) # SGD
 
@@ -196,7 +202,7 @@ def main():
     # loss = lambda y_true, y_pred: combined_loss_mse_pl_l2_v2(y_true, y_pred, ae_model, l2_lambda=0.01)
     # loss = lambda y_true, y_pred: combined_loss_mse_pl_l2_v1(y_true, y_pred, vgg_model = vgg_model, l2_lambda=0.01)
     # loss = combined_loss_mse_l2_wrapper(ae_model, l2_lambda=0.01)
-    # loss = mse_losses_vector[2]
+    # loss = mse_losses_vector[2] # Log MSE
     loss = combined_MSE_SSIM_UIQI_loss
     # loss = mahalanobis_loss
     # loss = combined_loss_mse_pl_l2_v2_wrapper(ae_model)
@@ -220,17 +226,20 @@ def main():
     print('.....')
 
     # epochs number
-    n_epochs = 2
+    n_epochs = 100
 
     # batch size
     n_batch = 16
 
     print(f'n_epochs = {n_epochs}')
     print(f'n_batch = {n_batch}')
+    print(f'learning_rate = {learn_rate[idx_lr]}')
 
-    # tf_train_dataset = tf_train_dataset.batch(batch_size=n_batch)
-    # tf_valid_dataset = tf_train_dataset.batch(batch_size=n_batch)
+    # EarlyStopping: Stops training when val_loss does not improve for 10 consecutive seasons.
+    early_stopping = EarlyStopping(monitor='val_loss', patience=15)
 
+    # ReduceLROnPlateau: Reduces the learning rate when val_loss does not improve for 5 consecutive seasons.
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, min_lr=1e-6)
 
     historic = ae_model.fit(train_dataset,
                             train_gt_dataset,
@@ -238,7 +247,8 @@ def main():
                             batch_size=n_batch,
                             shuffle=True,
                             # validation_data=(test_dataset, test_gt_dataset)
-                            validation_split=0.2
+                            validation_split=0.2,
+                            callbacks=[early_stopping, reduce_lr]
                             )
 
     # historic = ae_model.fit(tf_train_dataset,
@@ -249,6 +259,11 @@ def main():
     ''' ----- Validation ----- '''
 
     predicted_img = ae_model.predict(test_dataset)
+
+    psnr_res = psnr_metric(test_gt_dataset, test_dataset)
+    psnr_res = np.array(psnr_res)
+    print('PSNR vector:', psnr_res)
+    print('PSNR: mean=%.3f std=%.3f, n=%d' % (np.mean(psnr_res), np.std(psnr_res)*100, len(psnr_res)))
 
     ''' ----- Save images predicted ----- '''
 
@@ -263,15 +278,20 @@ def main():
     
     # output_name = 'combined_loss_mse_pl_l2_v2_' + 'dehazing'
     # output_name = 'combined_loss_mse_l2_wrapper_' + 'dehazing'
-    output_name = 'loss_mse_log_' + 'dehazing'
+    # output_name = 'loss_mse_log_' + 'dehazing'
+    output_name = 'combined_LogMSE_SSIM_UIQI_loss' + 'dehazing'
     # output_name = 'combined_loss_mae_kld_' + 'dehazing'
     # output_name = 'combined_loss_mse_cc_' + 'dehazing'
 
     save_predicted_images(predicted_img, path_out, output_name)
 
-    output_val = 'loss_mse_log_' + 'hazing'
+    # output_val = 'loss_mse_log_' + 'hazing'
+    output_val = 'combined_LogMSE_SSIM_UIQI_loss_' + 'hazing'
+    # output_val_gt = 'loss_mse_log_' + 'gt_hazing'
+    output_val_gt = 'combined_LogMSE_SSIM_UIQI_loss_' + 'gt_hazing'
 
     save_predicted_images(test_dataset, path_out, output_val)
+    save_predicted_images(test_gt_dataset, path_out, output_val_gt)
 
     print_rgb_images_vector(test_dataset, test_dataset.shape[0] // 5 + 1, 5)
     print_rgb_images_vector(test_gt_dataset, test_gt_dataset.shape[0] // 5 + 1, 5)

@@ -717,6 +717,10 @@ def ae_model_2CL_2MP_1FC_2DL(input_shape,
                                                filter_size[1],
                                                activation='relu',
                                                padding='same')(decoder_UPool)
+    # decoder_CNN = keras.layers.Conv2D(number_filters[1],
+    #                                   filter_size[1],
+    #                                   activation='relu',
+    #                                   padding='same')(decoder_UPool)
 
     # second deconvolutional layer
     decoder_UPool = keras.layers.UpSampling2D((2, 2))(decoder_CNN)
@@ -724,6 +728,10 @@ def ae_model_2CL_2MP_1FC_2DL(input_shape,
                                                filter_size[0],
                                                activation='relu',
                                                padding='same')(decoder_UPool)
+    # decoder_CNN = keras.layers.Conv2D(number_filters[0],
+    #                                   filter_size[0],
+    #                                   activation='relu',
+    #                                   padding='same')(decoder_UPool)
 
     # output layer [decoded]
     decoded = keras.layers.Conv2D(input_shape[2],

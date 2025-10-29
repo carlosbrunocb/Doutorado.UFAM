@@ -4,6 +4,24 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+# return a batch of v channel of the images [B, H, W, 1]
+def rgb_to_v_channel(rgb_image_batch):
+    """
+    Convert a batch of RGB images (normalized to [0, 1]) to HSV
+    and returns only the V channel.
+
+    :param rgb_image_batch: A tensor of RGB images with shape [B, H, W, 3],
+    with pixel values normalized to the range [0, 1].
+
+    :return v_channel_batch: A tensor with the V channel of the images, with shape [B, H, W, 1].
+    """
+    hsv_image_batch = tf.image.rgb_to_hsv(rgb_image_batch)
+
+    v_channel_batch = hsv_image_batch[..., 2:3]
+
+    return v_channel_batch
+
+
 # Loads an image according to the desired settings
 def load_image(image_path, width=128, height=128, resize=False,
                grayscale=False, normalized=False):

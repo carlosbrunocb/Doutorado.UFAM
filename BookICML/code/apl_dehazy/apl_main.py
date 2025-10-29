@@ -1,3 +1,5 @@
+import logging
+
 from image_handling.apl_image_handling import *
 from model.apl_analysis import *
 from model.apl_apl_model import *
@@ -43,6 +45,7 @@ def main():
 
     ''' ----- Loading images dataset ----- '''
     drive_path = 'dataset'
+    # drive_path = 'results/dh_pl/dehazy_function/512x512'
     dim = (512, 512)
     # dim = (256, 256)
     # dim = (128, 128)
@@ -176,7 +179,7 @@ def main():
     print(f"test_y = {test_y.shape}")
     print(f"dummy_test_params = {dummy_test_params.shape}")
 
-    dir_name = 'results/powerlaw/512x512'
+    dir_name = 'results/dh_pl/powerlaw_function/512x512'
     # dir_name = 'dataset/apl/res/512x512'
     file_name_in = '_in_sots_'
     file_name_res = '_res_sots_'
@@ -216,10 +219,24 @@ def main():
     # results[0] is the loss ('dynamic_power_law_transform', which is the MSE).
     # results[1] is the first metric of the first output (PSNR).
     results = model.evaluate(test_x, test_y, verbose=1)
+    print(f'results = {results}')
     loss_rate = results[0]  # average image MSE
     psnr_rate = results[1]  # avarege image PSNR
     print('MSE: %.3f' % loss_rate)
     print('PSNR: %.3f' % psnr_rate)
+
+    # Setting logging
+    logging.basicConfig(
+        filename=f'{dir_name}/evaluation_model.log',  # file name
+        level=logging.INFO,  # Minimum level for logger (INFO)
+        format='%(asctime)s - %(levelname)s - %(message)s',  # Log format with time, level and message
+        datefmt='%Y-%m-%d %H:%M:%S'  # date/time format
+    )
+
+    logging.info('Evaluation Model:')
+    logging.info('MSE: %.3f', loss_rate)
+    logging.info('PSNR: %.3f', psnr_rate)
+    logging.info('---')
 
     # save model
     try:
@@ -257,9 +274,12 @@ def main():
 
     # predicted_img = normalize_to_0_1(predicted_img)
 
-    save_predicted_images(sp_datase, dir_name, file_name_in)
-    save_predicted_images(predicted_img, dir_name, file_name_res)
-    save_predicted_images(gt_dataset, dir_name, file_name_gt)
+    # save_predicted_images(sp_datase, dir_name, file_name_in)
+    # save_predicted_images(predicted_img, dir_name, file_name_res)
+    # save_predicted_images(gt_dataset, dir_name, file_name_gt)
+    save_predicted_images(img_train, f'{dir_name}/in', file_name_in)
+    save_predicted_images(predicted_img, f'{dir_name}/res', file_name_res)
+    save_predicted_images(img_gt, f'{dir_name}/gt', file_name_gt)
 
     plt.figure(1)
     plt.imshow(sp_datase[0])

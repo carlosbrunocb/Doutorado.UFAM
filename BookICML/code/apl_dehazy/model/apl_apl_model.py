@@ -51,7 +51,7 @@ def build_regression_cnn(depth=10, filters=(64, 64, 64), num_channels=1, kernel_
     fc_dense_x = layers.Dense(64, activation='relu')(fc_dropout_x)
     fc_dropout_x = layers.Dropout(0.2)(fc_dense_x)
 
-    predicted_params = layers.Dense(3, activation=shifted_relu, name='predicted_parameters')(fc_dropout_x)
+    predicted_params = layers.Dense(3, activation=linear_plus_eps, name='predicted_parameters')(fc_dropout_x)
 
     powerlaw_x = (PowerLawTransformLayer(clip_output=clip_output, name='dynamic_power_law_transform')
                   ([input_layer, predicted_params]))
@@ -211,7 +211,7 @@ def build_dehaze_fuction_by_regression_cnn_ndm(
 
 
 # APL - Adaptive Parameter Learning
-# APL-DF - Adaptive Parameter Learning to Dehazy Function
+# APL-DF+PF - Adaptive Parameter Learning to Dehazy Function and PowerLaw Function
 # Regressive Convolutional Neural Network (R-CNN)
 def build_apl_to_df_and_pf_by_rcnn(
         depth=10,
@@ -278,7 +278,8 @@ def build_apl_to_df_and_pf_by_rcnn(
             cnn_y = layers.Dropout(0.2)(cnn_y)
 
     # predicted_dm = (B, H, W, 1)
-    predicted_dm = layers.Conv2D(1, kernel_size, activation='sigmoid', padding='same', name='predicted_dm')(cnn_y)
+    predicted_dm = layers.Conv2D(1, kernel_size, activation='sigmoid', padding='same',
+                                 name='predicted_dm')(cnn_y)
 
     # Apply the dehazy fuction using a, b and d(x) parameters found in the ANN of parameters and ANN of depth maps
     # I(x) = (H(x) - A * (1.0 - t(x))) / t(x)

@@ -11,6 +11,8 @@ from sklearn.model_selection import train_test_split
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.callbacks import CSVLogger
 
+import logging
+
 
 # Configures GPU memory allocation to not be used
 def disable_gpu():
@@ -217,12 +219,13 @@ def main():
     print(f"dummy_test_params = {dummy_test_params.shape}")
     print(f"dummy_test_dm_params = {dummy_test_dm_params.shape}")
 
-    dir_name = 'results/dehaze/512x512'
+    # dir_name = 'results/dehaze/512x512'
+    dir_name = 'results/dh_pl/dehazy_function/512x512'
     # dir_name = 'results/dehaze_apl/512x512/ni_2/v2'
-    file_name_in = 'in_apl_sots_'
-    file_name_dm = 'dm_apl_sots_'
-    file_name_res = 'res_apl_sots_'
-    file_name_gt = 'gt_apl_sots_'
+    file_name_in = 'in_apl_sots'
+    file_name_dm = 'dm_apl_sots'
+    file_name_res = 'res_apl_sots'
+    file_name_gt = 'gt_apl_sots'
     file_name_fig = 'grafico_loss_psnr'
 
     print("\nTraining model...")
@@ -264,10 +267,24 @@ def main():
     # results[0] is the loss ('dynamic_power_law_transform', which is the MSE).
     # results[1] is the first metric of the first output (PSNR).
     results = model.evaluate([test_x], test_y, verbose=1)
+    print(f'results = {results}')
     loss_rate = results[0]  # average image MSE
     psnr_rate = results[1]  # avarege image PSNR
     print('MSE: %.3f' % loss_rate)
     print('PSNR: %.3f' % psnr_rate)
+
+    # Setting logging
+    logging.basicConfig(
+        filename=f'{dir_name}/evaluation_model.log',  # file name
+        level=logging.INFO,  # Minimum level for logger (INFO)
+        format='%(asctime)s - %(levelname)s - %(message)s',  # Log format with time, level and message
+        datefmt='%Y-%m-%d %H:%M:%S'  # date/time format
+    )
+
+    logging.info('Evaluation Model:')
+    logging.info('MSE: %.3f', loss_rate)
+    logging.info('PSNR: %.3f', psnr_rate)
+    logging.info('---')
 
     # save model
     try:
@@ -280,7 +297,8 @@ def main():
 
     ''' ----- Prediction -----'''
     print("\nDenoising images (Predicting) ...")
-    predicted_img, predictions_dm, predictions_params = model.predict([test_x])
+    # predicted_img, predictions_dm, predictions_params = model.predict([test_x])
+    predicted_img, predictions_dm, predictions_params = model.predict([img_train])
     print(f':predicted_img max:{np.max(predicted_img)}')
     print(f':predicted_img min:{np.min(predicted_img)}')
     print(f':predictions_dm max:{np.max(predictions_dm)}')
@@ -308,13 +326,13 @@ def main():
 
     # predicted_img = normalize_to_0_1(predicted_img)
 
-    save_predicted_images(test_x, dir_name, file_name_in)
-    save_predicted_images(predicted_img, dir_name, file_name_res)
-    save_predicted_images(predictions_dm, dir_name, file_name_dm)
-    save_predicted_images(test_y, dir_name, file_name_gt)
+    save_predicted_images(img_train, f'{dir_name}/in', file_name_in)
+    save_predicted_images(predicted_img, f'{dir_name}/res', file_name_res)
+    save_predicted_images(predictions_dm, f'{dir_name}/dm', file_name_dm)
+    save_predicted_images(img_gt, f'{dir_name}/gt', file_name_gt)
 
     plt.figure(1)
-    plt.imshow(test_x[0])
+    plt.imshow(img_train[0])
     plt.axis('off')
 
     plt.figure(2)
@@ -322,7 +340,7 @@ def main():
     plt.axis('off')
 
     plt.figure(3)
-    plt.imshow(test_y[0])
+    plt.imshow(img_gt[0])
     plt.axis('off')
 
     plt.show()

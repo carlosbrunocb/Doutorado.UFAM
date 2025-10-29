@@ -376,10 +376,10 @@ def uiqi_loss(y_true, y_pred, c1=1e-4):
 
   return tf.reduce_mean(loss)
 
-# Loss Function Mean Squared Error Logarítmica (log MSE)
+# Loss Function Mean Squared Error Logarithmic (log MSE)
 def log_mse_loss(y_true, y_pred):
   """
-  loss function based on log MSE (Mean Squared Error Logarítmica).
+  loss function based on log MSE (Mean Squared Error Logarithmic).
 
   Args:
     y_true: reference image (groundtruth)

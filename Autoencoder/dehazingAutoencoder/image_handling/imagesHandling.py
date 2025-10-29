@@ -133,4 +133,7 @@ def save_predicted_images(images, path_out, exit_name):
         path_out: The directory where the images will be saved.
     """
     for i, imagem in enumerate(images):
-        plt.imsave(f"{path_out}/{exit_name}_{i}.png", imagem)
+        try:
+            plt.imsave(f"{path_out}/{exit_name}_{i}.png", imagem)
+        except Exception as e:
+            print(f"Error saving image {exit_name}_{i}.png: {e}")

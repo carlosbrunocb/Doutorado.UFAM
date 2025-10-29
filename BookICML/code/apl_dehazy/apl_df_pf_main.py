@@ -52,20 +52,20 @@ def main():
     # dim = (256, 256)
     # dim = (128, 128)
 
-    sp_datase, gt_dataset = load_images_from_folder(drive_path,
+    sp_dataset, gt_dataset = load_images_from_folder(drive_path,
                                                     sp_dir,
                                                     gt_dir,
                                                     width=dim[0], height=dim[1],
                                                     resize=True)
 
-    print(f"sp_datase = {sp_datase.shape}")
+    print(f"sp_dataset = {sp_dataset.shape}")
     print(f"gt_dataset = {gt_dataset.shape}")
 
     # # Print inputs
-    # for i, _ in enumerate(sp_datase):
+    # for i, _ in enumerate(sp_dataset):
     #     plt.figure(figsize=(12, 6))
     #     plt.subplot(1, 3, 1)
-    #     plt.imshow(sp_datase[i])
+    #     plt.imshow(sp_dataset[i])
     #     plt.title("IN")
     #     plt.axis('off')
     #
@@ -83,7 +83,7 @@ def main():
 
     ''' ----- Model Setting ----- '''
     # Input_shape settings
-    input_size = sp_datase[0].shape
+    input_size = sp_dataset[0].shape
 
     # Number of filters
     # number_filters = (1024, 512, 1024)
@@ -139,14 +139,15 @@ def main():
     # Setting ANN Model
     # model_choice = 'regression_cnn'
     # model_choice = 'regression_cnn_with_dm_mask'
-    # model_choice = 'apl_to_dehaze_fuction_by_regression_cnn'
-    model_choice = 'dehaze_fuction_by_regression_cnn_ndm'
+    # model_choice = 'dehaze_fuction_by_regression_cnn_ndm'
+    model_choice = 'apl_to_df_and_pf_by_rcnn'
 
     # ANN Model (architecture)
     model_builders = {
         'regression_cnn': build_regression_cnn,
         'regression_cnn_with_dm_mask': build_regression_cnn_with_dm_mask,
-        'dehaze_fuction_by_regression_cnn_ndm': build_dehaze_fuction_by_regression_cnn_ndm
+        'dehaze_fuction_by_regression_cnn_ndm': build_dehaze_fuction_by_regression_cnn_ndm,
+        'apl_to_df_and_pf_by_rcnn': build_apl_to_df_and_pf_by_rcnn
     }
 
     print("\n:::::::: Setting ::::::::")
@@ -169,13 +170,13 @@ def main():
     print("\n:::::::: Training ::::::::")
     print("Input Dataset ...")
 
-    img_train = sp_datase
+    img_train = sp_dataset
     img_gt = gt_dataset
 
     print(f'img_train: {img_train.shape}')
     print(f'img_gt: {img_gt.shape}')
 
-    num_idx = np.arange(len(sp_datase))
+    num_idx = np.arange(len(sp_dataset))
 
     train_ix, test_ix = train_test_split(num_idx, test_size=s_perc, random_state=42)
 
@@ -183,55 +184,67 @@ def main():
     train_x, train_y = img_train[train_ix], img_gt[train_ix]
     test_x, test_y = img_train[test_ix], img_gt[test_ix]
 
-    # for i, mask_list in enumerate(train_m):
+    # for i, _ in enumerate(train_x):
     #     plt.figure(figsize=(12, 6))
-    #     plt.subplot(1, 3, 1)
-    #     plt.imshow(train_x[i])
+    #     plt.subplot(1, 2, 1)
+    #     plt.imshow(test_x[i])
     #     plt.title("IN")
     #     plt.axis('off')
     #
-    #     plt.subplot(1, 3, 2)
-    #     plt.imshow(train_y[i])
+    #     plt.subplot(1, 2, 2)
+    #     plt.imshow(test_y[i])
     #     plt.title("GT")
-    #     plt.axis('off')
-    #
-    #     plt.subplot(1, 3, 3)
-    #     plt.imshow(train_m[i], cmap='gray')
-    #     plt.title("DM")
     #     plt.axis('off')
     #
     #     plt.show()
 
     # Create a dummy dataset
-    dummy_train_params = np.zeros((len(train_y), 2), dtype=np.float32)
+    # train
+    dummy_train_params_ab = np.zeros((len(train_y), 2), dtype=np.float32)
+    dummy_train_params_aeg = np.zeros((len(train_y), 3), dtype=np.float32)
     dummy_train_dm_params = np.zeros((len(train_y), dim[0], dim[1], 1), dtype=np.float32)
-    dummy_test_params = np.zeros((len(test_y), 2), dtype=np.float32)
+    dummy_train_df_output = np.zeros((len(train_y), dim[0], dim[1], 3), dtype=np.float32)
+
+    # test
+    dummy_test_params_ab = np.zeros((len(test_y), 2), dtype=np.float32)
+    dummy_test_params_aeg = np.zeros((len(test_y), 3), dtype=np.float32)
     dummy_test_dm_params = np.zeros((len(test_y), dim[0], dim[1], 1), dtype=np.float32)
+    dummy_test_df_output = np.zeros((len(test_y), dim[0], dim[1], 3), dtype=np.float32)
 
     print(f"train_x = {train_x.shape}")
     print(f"train_y = {train_y.shape}")
-    print(f"dummy_train_params = {dummy_train_params.shape}")
+    print(f"dummy_train_params_ab = {dummy_train_params_ab.shape}")
+    print(f"dummy_train_params_aeg = {dummy_train_params_aeg.shape}")
     print(f"dummy_train_dm_params = {dummy_train_dm_params.shape}")
+    # print(f"dummy_train_df_output = {dummy_train_df_output.shape}")
     print(f"test_x = {test_x.shape}")
     print(f"test_y = {test_y.shape}")
-    print(f"dummy_test_params = {dummy_test_params.shape}")
+    print(f"dummy_test_params_ab = {dummy_test_params_ab.shape}")
+    print(f"dummy_test_params_aeg = {dummy_test_params_aeg.shape}")
     print(f"dummy_test_dm_params = {dummy_test_dm_params.shape}")
+    # print(f"dummy_test_df_output = {dummy_test_df_output.shape}")
 
-    dir_name = 'results/dehaze/512x512'
+    # dir_name = 'results/dehaze/512x512'
+    dir_name = 'results/dh_pl/512x512'
     # dir_name = 'results/dehaze_apl/512x512/ni_2/v2'
     file_name_in = 'in_apl_sots_'
     file_name_dm = 'dm_apl_sots_'
+    file_name_df = 'df_apl_sots_'
     file_name_res = 'res_apl_sots_'
     file_name_gt = 'gt_apl_sots_'
     file_name_fig = 'grafico_loss_psnr'
 
     print("\nTraining model...")
     print(f"train_x = {type(train_x)}")
-    print(f"train_x = {type(train_x.dtype)}")
-    print(f"dummy_train_params = {type(dummy_train_params)}")
-    print(f"dummy_train_params = {type(dummy_train_params.dtype)}")
+    print(f"train_x = {train_x.dtype}")
+    print(f"dummy_train_params_ab = {type(dummy_train_params_ab)}")
+    print(f"dummy_train_params_ab = {dummy_train_params_ab.dtype}")
+    print(f"dummy_train_params_aeg = {type(dummy_train_params_aeg)}")
+    print(f"dummy_train_params_aeg = {dummy_train_params_aeg.dtype}")
     print(f"dummy_train_dm_params = {type(dummy_train_dm_params)}")
-    print(f"dummy_train_dm_params = {type(dummy_train_dm_params.dtype)}")
+    print(f"dummy_train_dm_params = {dummy_train_dm_params.dtype}")
+    print(f"dummy_train_df_output = {type(dummy_train_df_output)}")
+    print(f"dummy_train_df_output = {dummy_train_df_output.dtype}")
 
     # Log file in csv format
     csv_logger = CSVLogger(f'{dir_name}/training_log.csv', append=False)
@@ -245,17 +258,21 @@ def main():
 
     model.summary()
     model.compile(optimizer=optimizer,
-                  loss={'dehazy_function': loss,
+                  loss={'dynamic_power_law_transform': loss,
+                        'predicted_parameters_aeg': None,  # Don't apply loss function
+                        'dehazy_function': loss,
                         'predicted_dm': None,  # Don't apply loss function
-                        'predicted_parameters': None},  # Don't apply loss function
-                  metrics={'dehazy_function': metrics})
+                        'predicted_parameters_ab': None},  # Don't apply loss function
+                  metrics={'dynamic_power_law_transform': metrics})
     history = model.fit([train_x],  # Inputs: image and mask
                         # Outputs: transformed image and dummy parameters
-                        [train_y, dummy_train_dm_params, dummy_train_params],
+                        [train_y, train_y, dummy_train_dm_params, dummy_train_params_ab,
+                         dummy_train_params_aeg],
                         epochs=n_epochs,
                         batch_size=n_batch,
                         shuffle=True,
-                        validation_data=([test_x], [test_y, dummy_test_dm_params, dummy_test_params]),
+                        validation_data=([test_x], [test_y, test_y, dummy_test_dm_params,
+                                                    dummy_test_params_ab, dummy_test_params_aeg]),
                         callbacks=[early_stopping, reduce_lr, csv_logger],
                         verbose=1)
 
@@ -263,11 +280,16 @@ def main():
     print("\nEvaluating model...")
     # results[0] is the loss ('dynamic_power_law_transform', which is the MSE).
     # results[1] is the first metric of the first output (PSNR).
-    results = model.evaluate([test_x], test_y, verbose=1)
-    loss_rate = results[0]  # average image MSE
-    psnr_rate = results[1]  # avarege image PSNR
-    print('MSE: %.3f' % loss_rate)
-    print('PSNR: %.3f' % psnr_rate)
+    # results = model.evaluate([test_x], test_y, verbose=1)
+    results = model.evaluate([test_x],
+                             [test_y, test_y, dummy_test_dm_params,
+                              dummy_test_params_ab, dummy_test_params_aeg],
+                             verbose=1)
+    print(f'results = {results}')
+    # loss_rate = results[0]  # average image MSE
+    # psnr_rate = results[1]  # avarege image PSNR
+    # print('MSE: %.3f' % loss_rate)
+    # print('PSNR: %.3f' % psnr_rate)
 
     # save model
     try:
@@ -280,29 +302,44 @@ def main():
 
     ''' ----- Prediction -----'''
     print("\nDenoising images (Predicting) ...")
-    predicted_img, predictions_dm, predictions_params = model.predict([test_x])
+    predicted_img, predicted_dehazy, predictions_dm, predictions_par_ab, predictions_par_aeg = model.predict([test_x])
     print(f':predicted_img max:{np.max(predicted_img)}')
     print(f':predicted_img min:{np.min(predicted_img)}')
+    print(f':predicted_dehazy max:{np.max(predicted_dehazy)}')
+    print(f':predicted_dehazy min:{np.min(predicted_dehazy)}')
     print(f':predictions_dm max:{np.max(predictions_dm)}')
     print(f':predictions_dm min:{np.min(predictions_dm)}')
-    print(f':predictions_params max:{np.max(predictions_params)}')
-    print(f':predictions_params min:{np.min(predictions_params)}')
+    print(f':predictions_par_ab max:{np.max(predictions_par_ab)}')
+    print(f':predictions_par_ab min:{np.min(predictions_par_ab)}')
+    print(f':predictions_par_aeg max:{np.max(predictions_par_aeg)}')
+    print(f':predictions_par_aeg min:{np.min(predictions_par_aeg)}')
 
     print(' ----- Parameters  Predicted ----- ')
-    for par in predictions_params:
+    print(' (a, b)')
+    for par in predictions_par_ab:
+        print(par)
+
+    print('\n (alpha, epsilon, gamma)')
+    for par in predictions_par_aeg:
         print(par)
 
     # save prediction
     try:
         img_name_file = 'predicted_img'
+        deh_name_file = 'predicted_deh'
         dpm_name_file = 'predictions_dm'
-        par_name_file = 'predictions_params'
+        par_ab_name_file = 'predictions_par_ab'
+        par_aeg_name_file = 'predictions_par_aeg'
         np.save(f"{dir_name}/{img_name_file}.npy", predicted_img)
+        np.save(f"{dir_name}/{deh_name_file}.npy", predicted_dehazy)
         np.save(f"{dir_name}/{dpm_name_file}.npy", predictions_dm)
-        np.save(f"{dir_name}/{par_name_file}.npy", predictions_params)
+        np.save(f"{dir_name}/{par_ab_name_file}.npy", predictions_par_ab)
+        np.save(f"{dir_name}/{par_aeg_name_file}.npy", predictions_par_aeg)
         print(f'predicted image vector salved!\nname file: {img_name_file}.npy')
+        print(f'predicted image vector salved!\nname file: {deh_name_file}.npy')
         print(f'predicted image vector salved!\nname file: {dpm_name_file}.npy')
-        print(f'predicted parameters vector salved!\nname file: {par_name_file}.npy')
+        print(f'predicted parameters vector salved!\nname file: {par_ab_name_file}.npy')
+        print(f'predicted parameters vector salved!\nname file: {par_aeg_name_file}.npy')
     except Exception as e:
         print(f"Error saving predicted image vector: {e}")
 
@@ -310,19 +347,33 @@ def main():
 
     save_predicted_images(test_x, dir_name, file_name_in)
     save_predicted_images(predicted_img, dir_name, file_name_res)
+    save_predicted_images(predicted_dehazy, dir_name, file_name_df)
     save_predicted_images(predictions_dm, dir_name, file_name_dm)
     save_predicted_images(test_y, dir_name, file_name_gt)
 
-    plt.figure(1)
+    plt.figure(figsize=(12, 6))
+    plt.subplot(1, 4, 1)
     plt.imshow(test_x[0])
+    plt.title("IN")
     plt.axis('off')
 
-    plt.figure(2)
+    plt.subplot(1, 4, 2)
+    plt.imshow(predicted_dehazy[0])
+    plt.title("Dehazy")
+    plt.axis('off')
+
+    plt.subplot(1, 4, 3)
     plt.imshow(predicted_img[0])
+    plt.title("PowerLaw")
     plt.axis('off')
 
-    plt.figure(3)
+    plt.subplot(1, 4, 4)
     plt.imshow(test_y[0])
+    plt.title("GT")
+    plt.axis('off')
+
+    plt.figure(figsize=(12, 6))
+    plt.imshow(predictions_dm[0])
     plt.axis('off')
 
     plt.show()
